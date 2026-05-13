@@ -1,0 +1,76 @@
+name: Build macOS
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract version
+        id: version
+        run: |
+          VERSION=$(grep '\.version = ' build.zig.zon | sed 's/.*\.version = "\(.*\)".*/\1/')
+          echo "value=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Setup Zig
+        run: brew install zig@0.15 && echo "/opt/homebrew/opt/zig@0.15/bin" >> $GITHUB_PATH
+
+      - name: Build GhosttyKit
+        run: |
+          zig build \
+            -Doptimize=ReleaseFast \
+            -Demit-macos-app=false \
+            -Dversion-string=${{ steps.version.outputs.value }}
+
+      - name: Build Ghostty.app
+        run: |
+          cd macos
+          xcodebuild \
+            -target Ghostty \
+            -configuration Release \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Ad-hoc sign
+        run: |
+          codesign --deep --force --sign - \
+            --entitlements macos/Ghostty.entitlements \
+            macos/build/Release/Ghostty.app
+
+      - name: Zip app
+        run: |
+          cd macos/build/Release
+          zip -9 -r --symlinks ../../../ghostty-macos.zip Ghostty.app
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.value }}-quickterm-tab
+          name: "Ghostty ${{ steps.version.outputs.value }} (quickterm-tab)"
+          files: ghostty-macos.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update Homebrew Tap
+        env:
+          TAP_TOKEN: ${{ secrets.TAP_TOKEN }}
+          VERSION: ${{ steps.version.outputs.value }}
+        run: |
+          SHA256=$(shasum -a 256 ghostty-macos.zip | awk '{print $1}')
+          git clone "https://x-access-token:${TAP_TOKEN}@github.com/giggs-lynx/homebrew-tap.git" tap
+          cd tap
+          sed -i '' "s/version \".*\"/version \"${VERSION},quickterm-tab\"/" Casks/ghostty.rb
+          sed -i '' "s/sha256 \".*\"/sha256 \"${SHA256}\"/" Casks/ghostty.rb
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Casks/ghostty.rb
+          git commit -m "ghostty: update to ${VERSION}"
+          git push
