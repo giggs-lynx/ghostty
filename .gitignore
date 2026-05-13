@@ -29,3 +29,7 @@ glad.zip
 
 vgcore.*
 
+ghostty-macos.zip
+zig-pkg/
+macos/build/
+
