@@ -553,6 +553,15 @@ class QuickTerminalController: BaseTerminalController {
         // The view must gain our keyboard focus
         window.makeFirstResponder(focusedSurface)
 
+        // Explicitly activate the input context so the IME is properly
+        // re-established after window-level transitions (.popUpMenu → .floating).
+        // When the surface is already the window's first responder through a
+        // hide/show cycle, makeFirstResponder is a no-op and AppKit never calls
+        // becomeFirstResponder, so the input context is not automatically
+        // re-activated. Calling activate() here ensures the IME starts a fresh
+        // session regardless.
+        focusedSurface.inputContext?.activate()
+
         // If our window is already key then we're done!
         guard !window.isKeyWindow else { return }
 
