@@ -404,6 +404,15 @@ extension Ghostty {
             // sent to stop things like mouse selection.
             if !focused {
                 suppressNextLeftMouseUp = false
+
+                // Clear any stale IME composition state. If the IME didn't
+                // already discard it (e.g. after a window-level change), stale
+                // markedText causes the next focus session to misidentify the
+                // first keystroke as preedit-clearing input.
+                if markedText.length > 0 {
+                    markedText.mutableString.setString("")
+                    syncPreedit()
+                }
             }
 
             // Notify libghostty
@@ -1449,7 +1458,11 @@ extension Ghostty {
                 // the caret in place after Korean IMEs commit preedit text.
                 return !event.modifierFlags.isDisjoint(with: [.shift, .control, .option, .command])
             default:
-                return false
+                // Command-modified keys are shortcuts (e.g. tab switching via
+                // Cmd+Shift+[ / Cmd+Shift+]). They must be replayed so that
+                // Ghostty bindings like previous_tab/next_tab fire even when the
+                // IME commits preedit text on the same keystroke.
+                return event.modifierFlags.contains(.command)
             }
         }
 

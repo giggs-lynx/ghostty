@@ -7049,7 +7049,17 @@ pub const Keybinds = struct {
             );
             try self.set.put(
                 alloc,
+                .{ .key = .{ .physical = .bracket_left }, .mods = .{ .super = true, .shift = true } },
+                .{ .previous_tab = {} },
+            );
+            try self.set.put(
+                alloc,
                 .{ .key = .{ .unicode = ']' }, .mods = .{ .super = true, .shift = true } },
+                .{ .next_tab = {} },
+            );
+            try self.set.put(
+                alloc,
+                .{ .key = .{ .physical = .bracket_right }, .mods = .{ .super = true, .shift = true } },
                 .{ .next_tab = {} },
             );
             try self.set.put(

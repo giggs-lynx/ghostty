@@ -10,7 +10,7 @@ TAP_DIR="$(cd "$ROOT_DIR/../homebrew-tap" && pwd)"
 
 # Read version from build.zig.zon and append build date
 BASE_VERSION=$(grep '\.version = ' "$ROOT_DIR/build.zig.zon" | sed 's/.*\.version = "\(.*\)".*/\1/')
-VERSION="${BASE_VERSION},quickterm-tab.$(date +%Y%m%d)"
+VERSION="${BASE_VERSION}.quickterm-tab.$(date +%Y%m%d)"
 TAG="quickterm-tab"
 
 echo "==> Version: $VERSION"
